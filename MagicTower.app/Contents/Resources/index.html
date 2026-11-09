@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>魔塔 · Magic Tower</title>
+  <style>
+    :root {
+      --bg-dark: #0d0f17;
+      --panel-bg: rgba(20, 24, 36, 0.94);
+      --panel-border: rgba(255, 215, 120, 0.24);
+      --gold: #f6c95e;
+      --gold-bright: #ffe484;
+      --cyan: #5ce1e6;
+      --red: #ff5c6c;
+      --green: #4ade80;
+      --purple: #c084fc;
+      --blue: #60a5fa;
+      --text-main: #f3f4f6;
+      --text-dim: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 25%, #1c2237 0%, #0b0d14 75%);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Pixel Art Crispness */
+    canvas, .pixel-img {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* Top Toolbar */
+    .top-bar {
+      height: 44px;
+      background: linear-gradient(180deg, rgba(30, 35, 52, 0.96) 0%, rgba(16, 19, 30, 0.96) 100%);
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+      contain: layout style;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--gold-bright);
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 10px rgba(246, 201, 94, 0.4);
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(246, 201, 94, 0.15);
+      border: 1px solid rgba(246, 201, 94, 0.4);
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: linear-gradient(180deg, #2a3149 0%, #1b2033 100%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--text-main);
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .btn:hover {
+      background: linear-gradient(180deg, #353f5e 0%, #242b44 100%);
+      border-color: var(--gold);
+      color: var(--gold-bright);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn.gold {
+      background: linear-gradient(180deg, #634819 0%, #3d2b0d 100%);
+      border-color: rgba(246, 201, 94, 0.55);
+      color: var(--gold-bright);
+    }
+
+    .btn.danger {
+      background: linear-gradient(180deg, #631d28 0%, #3d1018 100%);
+      border-color: rgba(255, 92, 108, 0.55);
+      color: #ffb3ba;
+    }
+
+    .btn.active-toggle {
+      background: linear-gradient(180deg, #7c2d12 0%, #431407 100%);
+      border-color: #fb923c;
+      color: #fed7aa;
+      box-shadow: 0 0 12px rgba(251, 146, 60, 0.45);
+    }
+
+    /* Main Workspace Layout */
+    .game-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 14px 18px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left Hero Sidebar */
+    .sidebar-left {
+      width: 230px;
+      height: 560px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+      contain: strict;
+    }
+
+    .floor-banner {
+      background: linear-gradient(135deg, rgba(246, 201, 94, 0.18) 0%, rgba(45, 55, 85, 0.4) 100%);
+      border: 1px solid rgba(246, 201, 94, 0.35);
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+      position: relative;
+    }
+
+    .floor-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--gold-bright);
+      letter-spacing: 1px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+
+    .floor-subtitle {
+      font-size: 11px;
+      color: var(--cyan);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .god-badge {
+      display: none;
+      margin-top: 5px;
+      background: linear-gradient(90deg, #dc2626, #ea580c);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 99px;
+      letter-spacing: 0.8px;
+    }
+
+    .god-badge.visible {
+      display: inline-block;
+    }
+
+    /* Hero Profile Card */
+    .hero-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 9px 11px;
+    }
+
+    .hero-avatar-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: radial-gradient(circle, #2b3556 0%, #121624 100%);
+      border: 1px solid rgba(246, 201, 94, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+    }
+
+    .hero-avatar-wrap img {
+      width: 36px;
+      height: 36px;
+    }
+
+    .hero-meta {
+      flex: 1;
+    }
+
+    .hero-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .hero-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .hero-lv {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--gold);
+      background: rgba(246, 201, 94, 0.14);
+      padding: 1px 7px;
+      border-radius: 6px;
+      border: 1px solid rgba(246, 201, 94, 0.3);
+    }
+
+    .exp-bar-wrap {
+      margin-top: 6px;
+      background: rgba(0, 0, 0, 0.5);
+      height: 7px;
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .exp-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .exp-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Stats Grid */
+    .stats-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 9px 11px;
+    }
+
+    .stat-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .stat-val {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .val-hp { color: #4ade80; }
+    .val-atk { color: #f87171; }
+    .val-def { color: #60a5fa; }
+    .val-gold { color: #facc15; }
+    .val-crit { color: #c084fc; }
+    .val-miss { color: #2dd4bf; }
+
+    /* Keys Box */
+    .keys-box {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 8px;
+    }
+
+    .key-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 5px 4px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .key-item img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .key-count {
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .key-yellow { color: #fde047; }
+    .key-blue { color: #60a5fa; }
+    .key-red { color: #f87171; }
+
+    /* Relics / Tools Box */
+    .relics-box {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .relic-slot {
+      height: 54px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(255, 255, 255, 0.14);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      opacity: 0.32;
+      transition: opacity 0.2s ease, border-color 0.2s ease;
+    }
+
+    .relic-slot.owned {
+      opacity: 1;
+      background: radial-gradient(circle, rgba(246, 201, 94, 0.18) 0%, rgba(20, 24, 38, 0.85) 100%);
+      border: 1px solid rgba(246, 201, 94, 0.55);
+      box-shadow: 0 0 12px rgba(246, 201, 94, 0.2);
+      cursor: pointer;
+    }
+
+    .relic-slot.owned:hover {
+      border-color: var(--gold-bright);
+    }
+
+    .relic-slot img {
+      width: 26px;
+      height: 26px;
+    }
+
+    .relic-name {
+      font-size: 10px;
+      color: var(--gold-bright);
+      margin-top: 3px;
+      font-weight: 600;
+    }
+
+    /* Center Map Stage */
+    .stage-center {
+      width: 560px;
+      height: 560px;
+      border-radius: 14px;
+      background: #000;
+      border: 2px solid rgba(246, 201, 94, 0.45);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(246, 201, 94, 0.12);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      contain: strict;
+    }
+
+    #gameCanvas {
+      width: 560px;
+      height: 560px;
+      display: block;
+      cursor: pointer;
+      will-change: transform;
+    }
+
+    /* Right Inspector & Controls Panel */
+    .sidebar-right {
+      width: 245px;
+      height: 560px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      contain: strict;
+    }
+
+    .panel-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Inspector Card */
+    .inspector-card {
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 10px;
+      height: 158px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .inspector-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .inspector-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .inspector-icon img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .inspector-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .inspector-type {
+      font-size: 11px;
+      color: var(--cyan);
+    }
+
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 10px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .inspector-dmg-banner {
+      margin-top: 8px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Event Log Box */
+    .log-box {
+      flex: 1;
+      margin: 8px 0;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 8px 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11.5px;
+      height: 170px;
+      contain: content;
+    }
+
+    .log-entry {
+      line-height: 1.35;
+      color: #d1d5db;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding-bottom: 4px;
+    }
+
+    .log-entry .time {
+      color: #6b7280;
+      font-size: 10px;
+      margin-right: 4px;
+    }
+
+    /* D-Pad & Shortcuts Box */
+    .controls-box {
+      background: rgba(0, 0, 0, 0.26);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 9px;
+    }
+
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+
+    .dpad-btn {
+      height: 32px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dpad-btn:hover {
+      background: rgba(246, 201, 94, 0.22);
+      border-color: var(--gold);
+    }
+
+    .dpad-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Modal / Scene Overlays inside stage-center */
+    .stage-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 10, 16, 0.94);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      padding: 20px;
+    }
+
+    .stage-overlay.active {
+      display: flex;
+    }
+
+    /* Welcome Screen */
+    .welcome-screen {
+      background-image: url('assets/welcome.png');
+      background-size: cover;
+      background-position: center;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 34px 24px 28px;
+    }
+
+    .welcome-hero-title {
+      text-align: center;
+      background: rgba(10, 12, 20, 0.82);
+      border: 1px solid rgba(246, 201, 94, 0.55);
+      padding: 12px 28px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.65);
+    }
+
+    .welcome-hero-title h1 {
+      margin: 0;
+      font-size: 32px;
+      letter-spacing: 4px;
+      color: var(--gold-bright);
+      text-shadow: 0 0 16px rgba(246, 201, 94, 0.6), 0 2px 4px #000;
+    }
+
+    .welcome-hero-title p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #e5e7eb;
+      letter-spacing: 1px;
+    }
+
+    .welcome-menu-card {
+      background: rgba(26, 20, 35, 0.92);
+      border: 2px solid rgba(246, 201, 94, 0.6);
+      border-radius: 14px;
+      padding: 18px 26px;
+      width: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.8);
+    }
+
+    .menu-choice-btn {
+      background: linear-gradient(180deg, rgba(65, 50, 82, 0.9) 0%, rgba(38, 28, 52, 0.95) 100%);
+      border: 1px solid rgba(246, 201, 94, 0.45);
+      color: #fff;
+      padding: 11px 16px;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.16s ease;
+    }
+
+    .menu-choice-btn:hover {
+      background: linear-gradient(180deg, #856123 0%, #523910 100%);
+      border-color: var(--gold-bright);
+      transform: translateX(4px);
+      box-shadow: 0 0 16px rgba(246, 201, 94, 0.35);
+    }
+
+    .key-hint {
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 2px 7px;
+      border-radius: 5px;
+      color: var(--gold);
+      border: 1px solid rgba(246, 201, 94, 0.3);
+    }
+
+    /* Role Selection Screen */
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      width: 100%;
+      max-width: 500px;
+      margin-top: 10px;
+    }
+
+    .role-card {
+      background: linear-gradient(180deg, rgba(30, 36, 56, 0.95) 0%, rgba(17, 20, 32, 0.98) 100%);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+      position: relative;
+    }
+
+    .role-card.boy:hover {
+      border-color: #f87171;
+      box-shadow: 0 0 24px rgba(248, 113, 113, 0.3);
+      transform: translateY(-4px);
+    }
+
+    .role-card.girl:hover {
+      border-color: #60a5fa;
+      box-shadow: 0 0 24px rgba(96, 165, 250, 0.3);
+      transform: translateY(-4px);
+    }
+
+    .role-sprite-box {
+      width: 68px;
+      height: 68px;
+      border-radius: 14px;
+      background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.6) 100%);
+      border: 1px solid rgba(246, 201, 94, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .role-sprite-box img {
+      width: 48px;
+      height: 48px;
+    }
+
+    .role-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--gold-bright);
+      margin-bottom: 8px;
+    }
+
+    .role-stats-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .role-desc {
+      width: 100%;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #d1d5db;
+      background: rgba(0,0,0,0.35);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    /* Fight Overlay */
+    .fight-stage {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .fight-arena-box {
+      width: 450px;
+      background: rgba(14, 17, 26, 0.94);
+      border: 2px solid var(--gold);
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.85);
+      position: relative;
+    }
+
+    .combatants-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.45);
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    .fighter-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 155px;
+      position: relative;
+    }
+
+    .fighter-sprite-stage {
+      width: 68px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform 0.12s ease;
+    }
+
+    .fighter-sprite-stage img.main-sprite {
+      width: 48px;
+      height: 48px;
+    }
+
+    .fighter-equip-icons {
+      display: flex;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .fighter-equip-icons img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .badge-popup {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 5;
+    }
+
+    .badge-popup.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-10px) scale(1);
+    }
+
+    .badge-popup img {
+      height: 28px;
+    }
+
+    .hp-bar-container {
+      width: 100%;
+      height: 10px;
+      background: #1f2937;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .hp-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      width: 100%;
+      transition: width 0.15s ease;
+    }
+
+    .hp-bar-inner.monster {
+      background: linear-gradient(90deg, #ef4444, #f87171);
+    }
+
+    .fighter-hp-text {
+      font-size: 13px;
+      font-weight: 800;
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .vs-badge-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .vs-badge-wrap img {
+      width: 45px;
+      height: 30px;
+      border-radius: 4px;
+    }
+
+    .fight-stats-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 9px;
+      font-size: 13px;
+    }
+
+    .fight-reward-box {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(246, 201, 94, 0.15), rgba(246, 201, 94, 0.05));
+      border: 1px solid rgba(246, 201, 94, 0.35);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold-bright);
+    }
+
+    .levelup-banner {
+      display: none;
+      margin-top: 10px;
+      justify-content: center;
+    }
+
+    .levelup-banner.show {
+      display: flex;
+    }
+
+    /* Monster Book Overlay */
+    .book-list {
+      width: 100%;
+      max-height: 430px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 4px;
+    }
+
+    .book-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+
+    .book-item img {
+      width: 36px;
+      height: 36px;
+    }
+
+    .book-item-info {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px 8px;
+      font-size: 12px;
+    }
+
+    .book-dmg-badge {
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      min-width: 96px;
+    }
+
+    /* Shop Grid */
+    .shop-items-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      max-width: 470px;
+      margin-top: 10px;
+    }
+
+    .shop-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(246, 201, 94, 0.35);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .shop-btn:hover:not(:disabled) {
+      background: rgba(246, 201, 94, 0.18);
+      border-color: var(--gold-bright);
+    }
+
+    .shop-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Cheat Drawer Modal */
+    .cheat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      width: 100%;
+      max-width: 480px;
+      margin-top: 12px;
+    }
+
+    .orig-img-frame {
+      max-width: 100%;
+      max-height: 360px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+
+    /* Audio Settings Popover */
+    .audio-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.35);
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      font-size: 12px;
+    }
+
+    .audio-bar select {
+      background: #1b2033;
+      color: var(--gold-bright);
+      border: 1px solid rgba(246, 201, 94, 0.4);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .audio-bar input[type="range"] {
+      width: 65px;
+      accent-color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation & Audio / Cheat Toolbar -->
+  <header class="top-bar">
+    <div class="brand">
+      <span>🏰 魔塔 Magic Tower</span>
+      <span class="brand-badge">奇幻地牢 RPG</span>
+    </div>
+
+    <div class="audio-bar">
+      <button class="btn" id="btnMute" onclick="GameAudio.toggleMute()" title="静音切换">🔊 音效开启</button>
+      <span>BGM:</span>
+      <select id="bgmSelect" onchange="GameAudio.changeBgmMode(this.value)">
+        <option value="auto">🎵 随楼层自动切换</option>
+        <option value="welcome">🎶 序章 · 魔塔传说</option>
+        <option value="dungeon">🏰 古堡地牢交响</option>
+        <option value="fire">🔥 熔岩炼狱战歌</option>
+        <option value="ice">❄️ 冰晶迷宫幻想</option>
+        <option value="boss">👑 终焉魔王决战</option>
+      </select>
+      <input type="range" id="volSlider" min="0" max="100" value="75" oninput="GameAudio.setMasterVolume(this.value / 100)" title="音量调节" />
+    </div>
+
+    <div class="top-actions">
+      <button class="btn" onclick="Game.newGame()" title="开始新游戏 (N)">✨ 新游戏</button>
+      <button class="btn" onclick="Game.openSaveLoadModal('save')" title="保存存档 (M / K)">💾 存档</button>
+      <button class="btn" onclick="Game.openSaveLoadModal('load')" title="读取存档 (L)">📂 读档</button>
+      <button class="btn" onclick="Game.toggleBook()" title="怪物图鉴 (B)">📖 图鉴</button>
+      <button class="btn" onclick="Game.toggleHelp()" title="游戏帮助 (H)">❓ 帮助</button>
+      <button class="btn gold" id="btnCheatDrawer" onclick="Game.toggleCheatModal()" title="金手指面板 (C)">⚡ Cheat!</button>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Game Container -->
+  <main class="game-container">
+
+    <!-- Left Sidebar: Hero Status, Keys & Relics -->
+    <aside class="sidebar-left">
+      <div class="floor-banner">
+        <div class="floor-title" id="uiFloorTitle">魔塔 第 1 层</div>
+        <div class="floor-subtitle" id="uiFloorSub">初入魔塔 · 启程之地</div>
+        <div class="god-badge" id="uiGodBadge">⚡ GOD MODE (受击回血) ⚡</div>
+      </div>
+
+      <div class="hero-card">
+        <div class="hero-avatar-wrap">
+          <img id="uiHeroAvatar" class="pixel-img" src="assets/sex1.png" alt="Hero" />
+        </div>
+        <div class="hero-meta">
+          <div class="hero-name-row">
+            <span class="hero-name" id="uiHeroName">码农</span>
+            <span class="hero-lv" id="uiHeroLv">Lv 1</span>
+          </div>
+          <div class="exp-bar-wrap">
+            <div class="exp-bar-fill" id="uiExpBar"></div>
+          </div>
+          <div class="exp-label">
+            <span id="uiExpCur">EXP: 0</span>
+            <span id="uiExpNeed">距升级: 5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-list">
+        <div class="stat-row">
+          <span class="stat-label">❤️ 生命值 (HP)</span>
+          <span class="stat-val val-hp" id="uiHp">150</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">⚔️ 攻击力 (ATK)</span>
+          <span class="stat-val val-atk" id="uiAtk">14</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">🛡️ 防御力 (DEF)</span>
+          <span class="stat-val val-def" id="uiDef">10</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">💰 金币 (GOLD)</span>
+          <span class="stat-val val-gold" id="uiMoney">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">💥 暴击率 (CRIT)</span>
+          <span class="stat-val val-crit" id="uiCrit">7%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">💨 闪避率 (MISS)</span>
+          <span class="stat-val val-miss" id="uiMiss">8%</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-section-title"><span>🗝️ 魔塔钥匙</span></div>
+        <div class="keys-box">
+          <div class="key-item" title="黄钥匙：开启黄色木门">
+            <img class="pixel-img" src="assets/6.png" alt="Yellow Key" />
+            <span class="key-count key-yellow" id="uiKeyYellow">0</span>
+          </div>
+          <div class="key-item" title="蓝钥匙：开启蓝色法门">
+            <img class="pixel-img" src="assets/7.png" alt="Blue Key" />
+            <span class="key-count key-blue" id="uiKeyBlue">0</span>
+          </div>
+          <div class="key-item" title="红钥匙：开启赤红封印门">
+            <img class="pixel-img" src="assets/8.png" alt="Red Key" />
+            <span class="key-count key-red" id="uiKeyRed">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-section-title"><span>🏆 勇者圣物</span></div>
+        <div class="relics-box">
+          <div class="relic-slot" id="slotBook" onclick="if(Game.tools.book) Game.toggleBook()" title="怪物图鉴 (获得后可按 B 查看本层怪物属性与预计伤害)">
+            <img class="pixel-img" src="assets/book.png" alt="Book" />
+            <span class="relic-name">怪物图鉴</span>
+          </div>
+          <div class="relic-slot" id="slotSword" title="勇者圣剑 (攻击力 +10)">
+            <img class="pixel-img" src="assets/sword.png" alt="Sword" />
+            <span class="relic-name">勇者圣剑</span>
+          </div>
+          <div class="relic-slot" id="slotShield" title="勇者圣盾 (防御力 +8)">
+            <img class="pixel-img" src="assets/shield.png" alt="Shield" />
+            <span class="relic-name">勇者圣盾</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center 560x560 Map Canvas & Interactive Scene Overlays -->
+    <section class="stage-center">
+      <canvas id="gameCanvas" width="560" height="560"></canvas>
+
+      <!-- 1. Welcome Overlay -->
+      <div class="stage-overlay active" id="overlayWelcome">
+        <div class="welcome-screen">
+          <div class="welcome-hero-title">
+            <h1>魔 塔 · MAGIC TOWER</h1>
+            <p>勇闯十层魔塔 · 拯救被囚禁于塔顶的公主</p>
+          </div>
+
+          <div class="welcome-menu-card">
+            <button class="menu-choice-btn" onclick="Game.newGame()">
+              <span>1. 开始新游戏 (New Game)</span>
+              <span class="key-hint">按键 1</span>
+            </button>
+            <button class="menu-choice-btn" onclick="Game.quickLoadFromWelcome()">
+              <span>2. 继续游戏 (Continue)</span>
+              <span class="key-hint">按键 2</span>
+            </button>
+            <button class="menu-choice-btn" onclick="Game.openSaveLoadModal('load')">
+              <span>📂 读取存档槽位</span>
+              <span class="key-hint">L</span>
+            </button>
+          </div>
+
+          <div style="font-size: 12px; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.6); padding: 5px 14px; border-radius: 99px;">
+            💡 支持方向键 / WASD / 鼠标点击相邻格移动 · 按 H 查看帮助
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Role Select Overlay -->
+      <div class="stage-overlay" id="overlaySelect">
+        <div style="text-align: center; margin-bottom: 6px;">
+          <h2 style="margin: 0; color: var(--gold-bright); font-size: 22px;">✨ 选择你的英雄身份 ✨</h2>
+          <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-dim);">按数字键 1 / 2 或点击角色卡片开始冒险（不同角色将解锁不同通关结局！）</p>
+        </div>
+
+        <div class="role-grid">
+          <div class="role-card boy" onclick="Game.selectRole(1)">
+            <span class="key-hint" style="position:absolute; top:10px; right:10px;">按键 1</span>
+            <div class="role-sprite-box">
+              <img class="pixel-img" src="assets/sex1.png" alt="Boy" />
+            </div>
+            <div class="role-title">👨‍💻 码农 (少年)</div>
+            <div class="role-stats-tags">
+              <span class="tag" style="color:#4ade80;">HP 150</span>
+              <span class="tag" style="color:#f87171;">ATK 14</span>
+              <span class="tag" style="color:#60a5fa;">DEF 10</span>
+              <span class="tag" style="color:#c084fc;">暴击 7%</span>
+              <span class="tag" style="color:#2dd4bf;">闪避 8%</span>
+            </div>
+            <div class="role-desc">
+              <strong style="color:#f87171;">特点：</strong>攻♂击力较高，暴♂击几率高！<br/>
+              <strong style="color:#9ca3af;">缺点：</strong>不灵活 = =，赚得多死得早
+            </div>
+          </div>
+
+          <div class="role-card girl" onclick="Game.selectRole(0)">
+            <span class="key-hint" style="position:absolute; top:10px; right:10px;">按键 2</span>
+            <div class="role-sprite-box">
+              <img class="pixel-img" src="assets/sex0.png" alt="Girl" />
+            </div>
+            <div class="role-title">👩‍💻 女码农 (少女)</div>
+            <div class="role-stats-tags">
+              <span class="tag" style="color:#4ade80;">HP 200</span>
+              <span class="tag" style="color:#f87171;">ATK 13</span>
+              <span class="tag" style="color:#60a5fa;">DEF 10</span>
+              <span class="tag" style="color:#c084fc;">暴击 1%</span>
+              <span class="tag" style="color:#2dd4bf;">闪避 18%</span>
+            </div>
+            <div class="role-desc">
+              <strong style="color:#60a5fa;">特点：</strong>血特别多（咳咳.. 闪避几率高！<br/>
+              <strong style="color:#9ca3af;">缺点：</strong>攻击力略低，她为啥要去救公主...
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <button class="btn" onclick="Game.showWelcome()">↩️ 返回主菜单</button>
+        </div>
+      </div>
+
+      <!-- 3. Fight Overlay -->
+      <div class="stage-overlay" id="overlayFight" onclick="Game.finishFightOverlay()">
+        <div class="fight-stage" id="fightStageBg">
+          <div class="fight-arena-box" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-size:14px; font-weight:800; color:var(--gold-bright);" id="fightHeaderTitle">⚔️ 遭遇战斗</span>
+              <span style="font-size:11px; color:var(--text-dim);" id="fightRoundIndicator">第 1 回合</span>
+            </div>
+
+            <div class="combatants-row">
+              <!-- Player Fighter -->
+              <div class="fighter-col">
+                <div class="fighter-sprite-stage" id="fightPlayerStage">
+                  <div class="badge-popup" id="badgePlayerPopup"></div>
+                  <img class="pixel-img main-sprite" id="fightPlayerSprite" src="assets/sex1.png" alt="Player" />
+                </div>
+                <div class="fighter-equip-icons">
+                  <img class="pixel-img" id="fightSwordIcon" src="assets/sword.png" style="display:none;" title="圣剑装备中" />
+                  <img class="pixel-img" id="fightShieldIcon" src="assets/shield.png" style="display:none;" title="圣盾装备中" />
+                </div>
+                <div class="hp-bar-container">
+                  <div class="hp-bar-inner" id="fightPlayerHpBar"></div>
+                </div>
+                <div class="fighter-hp-text val-hp" id="fightPlayerHpText">150 -> 150</div>
+              </div>
+
+              <!-- VS Badge -->
+              <div class="vs-badge-wrap">
+                <img class="pixel-img" src="assets/vs.png" alt="VS" />
+                <span style="font-size:11px; color:var(--gold); font-weight:700;" id="fightMonsterName">蓝史莱姆</span>
+              </div>
+
+              <!-- Monster Fighter -->
+              <div class="fighter-col">
+                <div class="fighter-sprite-stage" id="fightMonsterStage">
+                  <div class="badge-popup" id="badgeMonsterPopup"></div>
+                  <img class="pixel-img main-sprite" id="fightMonsterSprite" src="assets/11.png" alt="Monster" />
+                </div>
+                <div style="height:22px; font-size:11px; color:var(--text-dim);" id="fightMonsterStatsSub">ATK 12 · DEF 9</div>
+                <div class="hp-bar-container">
+                  <div class="hp-bar-inner monster" id="fightMonsterHpBar"></div>
+                </div>
+                <div class="fighter-hp-text" style="color:#f87171;" id="fightMonsterHpText">50 -> 0</div>
+              </div>
+            </div>
+
+            <div class="fight-stats-box">
+              <div>
+                <div style="color:#f87171; font-weight:700;" id="fightPlayerCrit">我方受暴击 (Crit) : 0</div>
+                <div style="color:#4ade80; font-weight:700; margin-top:4px;" id="fightPlayerMiss">我方发生失误 (Miss) : 0</div>
+              </div>
+              <div>
+                <div style="color:#f87171; font-weight:700;" id="fightMonsterCrit">我方打出暴击 (Crit) : 0</div>
+                <div style="color:#4ade80; font-weight:700; margin-top:4px;" id="fightMonsterMiss">敌方攻击落空 (Miss) : 0</div>
+              </div>
+            </div>
+
+            <div class="fight-reward-box">
+              <span id="fightRewardMoney">💰 金币 + 3</span>
+              <span id="fightRewardExp">✨ 经验 + 1</span>
+            </div>
+
+            <div class="levelup-banner" id="fightLevelupBanner">
+              <img class="pixel-img" src="assets/levelup.png" alt="Level Up!!" style="height:36px;" />
+            </div>
+
+            <div style="text-align:center; margin-top:12px;">
+              <button class="btn gold" onclick="Game.finishFightOverlay()" style="padding:7px 22px; font-size:13px;">
+                <span id="fightContinueBtnText">⚡ 跳过动画 / 继续 (任意键或点击)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Shop Overlay -->
+      <div class="stage-overlay" id="overlayShop">
+        <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.5); padding:8px 16px; border-radius:12px; border:1px solid rgba(246,201,94,0.4);">
+            <img class="pixel-img" src="assets/50.png" style="width:32px;height:32px;" />
+            <img class="pixel-img" src="assets/51.png" style="width:32px;height:32px;" />
+            <img class="pixel-img" src="assets/52.png" style="width:32px;height:32px;" />
+          </div>
+          <h3 style="margin:10px 0 4px; color:var(--gold-bright);">"Soldiers~ Money! Money! Give me your money!!!"</h3>
+          <p style="margin:0 0 8px; font-size:12px; color:var(--text-dim);">当前持有金币：<strong style="color:var(--gold-bright); font-size:15px;" id="shopGoldDisplay">0</strong> G（按数字键 1-6 购买，按 Q 或 Esc 离开）</p>
+
+          <div class="shop-items-grid">
+            <button class="shop-btn" id="shopBtn1" onclick="Game.buyShop(1)">
+              <span style="color:#4ade80;">1. 生命恢复 HP + 30</span>
+              <span class="key-hint">50 G</span>
+            </button>
+            <button class="shop-btn" id="shopBtn2" onclick="Game.buyShop(2)">
+              <span style="color:#f87171;">2. 力量祝福 ATK + 2</span>
+              <span class="key-hint">50 G</span>
+            </button>
+            <button class="shop-btn" id="shopBtn3" onclick="Game.buyShop(3)">
+              <span style="color:#60a5fa;">3. 坚韧祝福 DEF + 1</span>
+              <span class="key-hint">50 G</span>
+            </button>
+            <button class="shop-btn" id="shopBtn4" onclick="Game.buyShop(4)">
+              <span style="color:#fde047;">4. 黄钥匙 Yellow Key + 1</span>
+              <span class="key-hint">40 G</span>
+            </button>
+            <button class="shop-btn" id="shopBtn5" onclick="Game.buyShop(5)">
+              <span style="color:#38bdf8;">5. 蓝钥匙 Blue Key + 1</span>
+              <span class="key-hint">120 G</span>
+            </button>
+            <button class="shop-btn" id="shopBtn6" onclick="Game.buyShop(6)">
+              <span style="color:#fb7185;">6. 红钥匙 Red Key + 1</span>
+              <span class="key-hint">300 G</span>
+            </button>
+          </div>
+
+          <div style="margin-top:16px; display:flex; gap:10px;">
+            <button class="btn gold" onclick="Game.closeOverlay()">🚪 离开商店 (Q / Esc)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Monster Book Overlay -->
+      <div class="stage-overlay" id="overlayBook">
+        <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div>
+            <h3 style="margin:0; color:var(--gold-bright);">📖 本层怪物图鉴</h3>
+            <span style="font-size:11px; color:var(--text-dim);">计算未含随机暴击/闪避的基准期望战损 · 任意键或点击关闭</span>
+          </div>
+          <button class="btn gold" onclick="Game.closeOverlay()">✖ 关闭 (B / Esc)</button>
+        </div>
+        <div class="book-list" id="bookListContainer"></div>
+      </div>
+
+      <!-- 6. NPC Tip / Help / Ending / Game Over Overlay -->
+      <div class="stage-overlay" id="overlayEvent" onclick="Game.handleEventOverlayClick()">
+        <div id="eventOverlayContent" style="display:flex; flex-direction:column; align-items:center; text-align:center; max-width:480px;" onclick="event.stopPropagation()">
+        </div>
+      </div>
+
+      <!-- 7. Save / Load Multi-Slot Overlay -->
+      <div class="stage-overlay" id="overlaySaveLoad">
+        <div style="width:100%; max-width:460px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0; color:var(--gold-bright);" id="saveLoadModalTitle">💾 存档管理</h3>
+            <button class="btn" onclick="Game.closeOverlay()">✖ 关闭</button>
+          </div>
+          <div id="saveSlotsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- 8. Cheat Modal -->
+      <div class="stage-overlay" id="overlayCheat">
+        <div style="width:100%; max-width:480px; text-align:center;">
+          <h3 style="margin:0 0 4px; color:var(--gold-bright);">⚡ 魔塔金手指面板 (Cheat Menu) ⚡</h3>
+          <p style="margin:0 0 10px; font-size:12px; color:var(--text-dim);">自由调整勇者属性、钥匙与圣物（开启 GodMode 后受到怪物伤害将转化为生命恢复！）</p>
+          <div class="cheat-grid">
+            <button class="btn" onclick="Game.cheat('hp')">❤️ HP + 100</button>
+            <button class="btn" onclick="Game.cheat('atk')">⚔️ Attack + 3</button>
+            <button class="btn" onclick="Game.cheat('def')">🛡️ Defend + 2</button>
+            <button class="btn" onclick="Game.cheat('money')">💰 Money + 50</button>
+            <button class="btn" onclick="Game.cheat('level')">🆙 Level + 1</button>
+            <button class="btn" onclick="Game.cheat('yellow')">🗝️ 黄钥匙 + 1</button>
+            <button class="btn" onclick="Game.cheat('blue')">🗝️ 蓝钥匙 + 1</button>
+            <button class="btn" onclick="Game.cheat('red')">🗝️ 红钥匙 + 1</button>
+            <button class="btn" onclick="Game.cheat('book')">📖 切换怪物图鉴</button>
+            <button class="btn" onclick="Game.cheat('sword')">🗡️ 切换勇者圣剑</button>
+            <button class="btn" onclick="Game.cheat('shield')">🛡️ 切换勇者圣盾</button>
+            <button class="btn danger" id="btnGodModeModal" onclick="Game.cheat('god')">🔥 切换 GodMode</button>
+          </div>
+          <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:12px; color:var(--text-dim);">直达楼层：</span>
+            <div id="floorJumpBtns" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn gold" onclick="Game.closeOverlay()">✅ 完成并返回游戏</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Sidebar: Tile Inspector, Battle Mode, Adventure Log & D-Pad -->
+    <aside class="sidebar-right">
+      <div>
+        <div class="panel-section-title">
+          <span>🔍 图块探测</span>
+          <span style="font-size:10px; color:var(--text-dim);" id="uiInspectorHint">需图鉴解锁怪属性</span>
+        </div>
+        <div class="inspector-card" id="uiInspector">
+          <div style="text-align:center; color:var(--text-dim); font-size:12px;">
+            将鼠标悬停在地图上的道具、机关或怪物上查看详情 ✨
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+        <div class="panel-section-title" style="margin-top:8px;">
+          <span>📜 冒险日志</span>
+          <label style="font-size:11px; color:var(--cyan); cursor:pointer; display:flex; align-items:center; gap:4px; text-transform:none;">
+            <input type="checkbox" id="chkAnimatedFight" checked onchange="Game.animatedFight = this.checked" />
+            回合动画战斗
+          </label>
+        </div>
+        <div class="log-box" id="uiLogBox"></div>
+      </div>
+
+      <div class="controls-box">
+        <div class="dpad-grid">
+          <div></div>
+          <button class="dpad-btn" onclick="Game.step(0, -1, 1)" title="向上移动 (↑ / W)">▲</button>
+          <div></div>
+          <button class="dpad-btn" onclick="Game.step(-1, 0, 2)" title="向左移动 (← / A)">◀</button>
+          <button class="dpad-btn" onclick="Game.step(0, 1, 3)" title="向下移动 (↓ / S)">▼</button>
+          <button class="dpad-btn" onclick="Game.step(1, 0, 4)" title="向右移动 (→ / D)">▶</button>
+        </div>
+        <div style="font-size:11px; color:var(--text-dim); text-align:center; line-height:1.4;">
+          快捷键：<strong style="color:#fff;">方向键/WASD</strong> 移动 · <strong style="color:#fff;">B</strong> 图鉴<br/>
+          <strong style="color:#fff;">M/K</strong> 快速存档 · <strong style="color:#fff;">L</strong> 快速读档 · <strong style="color:#fff;">H</strong> 帮助
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
